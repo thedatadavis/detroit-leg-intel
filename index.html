@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detroit Legislative Intelligence | Outlier Media</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body { background-color: #f8fafc; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- MOCK DATA ---
+        const AGENCIES = [
+            { id: 'dhc', name: 'Detroit Housing Commission', type: 'Commission', update: '2 hrs ago', status: 'active' },
+            { id: 'council', name: 'City Council', type: 'Legislative', update: '5 mins ago', status: 'active' },
+            { id: 'bpc', name: 'Board of Police Commissioners', type: 'Oversight', update: 'Yesterday', status: 'active' },
+            { id: 'bza', name: 'Board of Zoning Appeals', type: 'Zoning', update: '3 days ago', status: 'inactive' },
+            { id: 'dlba', name: 'Detroit Land Bank Authority', type: 'Authority', update: '1 week ago', status: 'inactive' }
+        ];
+
+        const LIVE_FEED = [
+            { agency: 'DHC', action: 'Approved Resolution 3333', meta: '$786k Surveillance Contract', time: 'Dec 18, 11:10 AM' },
+            { agency: 'City Council', action: 'Discussion: ShotSpotter Renewal', meta: 'Public Comment Period', time: 'Dec 18, 10:45 AM' },
+            { agency: 'BZA', action: 'Denied Variance', meta: '1400 Woodward Ave', time: 'Dec 17, 4:30 PM' },
+        ];
+
+        // The specific artifact from your PDF
+        const RES_3333 = {
+            id: 'res-3333',
+            agency: 'Detroit Housing Commission',
+            type: 'Resolution',
+            number: '3333',
+            date: '2025-12-18',
+            title: 'Approval of Security Camera Surveillance System Implementation',
+            status: 'Adopted',
+            amount: 786690.00,
+            vendor: 'MDG Connected Solutions / T-Mobile',
+            locations: ['Brewster Homes', 'Diggs Homes', 'Smith Homes', 'Sojourner Truth', 'Algonquin Apts', 'Greenbrooke Manor'],
+            ocr_text: `DHC seeks to implement and install a new cloud-based security camera surveillance system across six (6) DHC properties... T-Mobile will provide wireless Internet connectivity... MDG Connected Solutions, Inc DBA 5G Store will provide equipment... Integration with the City of Detroit’s Project Green Light program... The financial considerations... One-time equipment: $786,690.00... Annual recurring service: $63,228.00.`,
+            doc_notes: `A DHC staffer explains that the system is “critical” but it’s hard to hear much else. This resolution is utilizing capital funding. DHC is storing video, and DPD can get access to the video.`
+        };
+
+        // --- COMPONENTS ---
+
+        const Sidebar = ({ view, setView }) => (
+            <div className="w-64 bg-slate-900 text-slate-300 h-screen fixed left-0 top-0 flex flex-col border-r border-slate-800 z-50">
+                <div className="p-6 flex items-center gap-3 text-white border-b border-slate-800">
+                    <i className="fa-solid fa-layer-group text-emerald-400 text-xl"></i>
+                    <div>
+                        <h1 className="font-bold leading-none tracking-tight">Detroit<br/>Intelligence</h1>
+                    </div>
+                </div>
+
+                <div className="p-4 space-y-1">
+                    <p className="text-xs font-bold text-slate-500 uppercase px-3 mb-2">Menu</p>
+                    <button onClick={() => setView('dashboard')} className={`w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-slate-800 transition ${view === 'dashboard' ? 'bg-slate-800 text-white' : ''}`}>
+                        <i className="fa-solid fa-gauge-high w-5"></i> Command Center
+                    </button>
+                    <button onClick={() => setView('search')} className={`w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-slate-800 transition ${view === 'search' ? 'bg-slate-800 text-white' : ''}`}>
+                        <i className="fa-solid fa-magnifying-glass w-5"></i> Universal Search
+                    </button>
+                    <button className="w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-slate-800 transition">
+                        <i className="fa-regular fa-bell w-5"></i> My Alerts
+                    </button>
+                </div>
+
+                <div className="p-4 space-y-1 mt-4 overflow-y-auto">
+                    <div className="flex justify-between items-center px-3 mb-2">
+                        <p className="text-xs font-bold text-slate-500 uppercase">Agencies</p>
+                        <i className="fa-solid fa-plus text-xs text-slate-500 cursor-pointer hover:text-white"></i>
+                    </div>
+                    {AGENCIES.map(agency => (
+                        <button key={agency.id} className="w-full text-left px-3 py-2 rounded flex items-center gap-2 hover:bg-slate-800 transition text-sm">
+                            <span className={`w-2 h-2 rounded-full ${agency.status === 'active' ? 'bg-emerald-500' : 'bg-slate-600'}`}></span>
+                            {agency.name}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="mt-auto p-4 border-t border-slate-800">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-xs">CD</div>
+                        <div>
+                            <p className="text-sm text-white font-medium">Chris Davis</p>
+                            <p className="text-xs">Pro Account</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const Dashboard = ({ setView, setSearchTerm }) => {
+            const handleSearch = (e) => {
+                if (e.key === 'Enter') {
+                    setSearchTerm(e.target.value);
+                    setView('search');
+                }
+            };
+
+            return (
+                <div className="p-8 max-w-7xl mx-auto">
+                    <h2 className="text-2xl font-bold text-slate-900 mb-6">Legislative Command Center</h2>
+                    
+                    {/* Big Search */}
+                    <div className="relative mb-10">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i className="fa-solid fa-search text-slate-400 text-lg"></i>
+                        </div>
+                        <input 
+                            type="text" 
+                            className="w-full pl-12 pr-4 py-4 rounded-xl border border-slate-200 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg"
+                            placeholder="Search resolutions, vendors, or transcripts (e.g., 'Security Cameras', 'Zoning')..."
+                            onKeyDown={handleSearch}
+                        />
+                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center gap-2">
+                            <span className="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded border border-slate-200">⌘ K</span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-6 mb-8">
+                        <div className="col-span-2 space-y-6">
+                            {/* Live Feed */}
+                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                    <h3 className="font-bold text-slate-700"><i className="fa-solid fa-bolt text-amber-500 mr-2"></i>Live Ingestion Feed</h3>
+                                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full animate-pulse">● Live</span>
+                                </div>
+                                <div className="divide-y divide-slate-100">
+                                    {LIVE_FEED.map((feed, i) => (
+                                        <div key={i} className="px-6 py-4 hover:bg-slate-50 transition cursor-pointer group" onClick={() => { if(feed.agency === 'DHC') setView('detail'); }}>
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{feed.agency}</span>
+                                                        <span className="text-xs text-slate-400">• {feed.time}</span>
+                                                    </div>
+                                                    <p className="text-slate-800 font-medium group-hover:text-indigo-600 transition">{feed.action}</p>
+                                                    <p className="text-sm text-slate-500 mt-1">{feed.meta}</p>
+                                                </div>
+                                                <i className="fa-solid fa-chevron-right text-slate-300 group-hover:text-indigo-400 mt-2"></i>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            {/* Stats */}
+                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase mb-4">System Status</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span className="text-slate-600">Resolutions Indexed</span>
+                                            <span className="font-bold text-slate-900">14,203</span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 rounded-full h-1.5">
+                                            <div className="bg-indigo-600 h-1.5 rounded-full" style={{width: '85%'}}></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span className="text-slate-600">Contracts Tracked ($)</span>
+                                            <span className="font-bold text-slate-900">$452M</span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 rounded-full h-1.5">
+                                            <div className="bg-emerald-500 h-1.5 rounded-full" style={{width: '65%'}}></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span className="text-slate-600">PDFs OCR'd</span>
+                                            <span className="font-bold text-slate-900">98%</span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 rounded-full h-1.5">
+                                            <div className="bg-amber-500 h-1.5 rounded-full" style={{width: '98%'}}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* Promo */}
+                            <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-xl p-6 text-white shadow-lg">
+                                <h3 className="font-bold text-lg mb-2">Legislative Alerts</h3>
+                                <p className="text-indigo-100 text-sm mb-4">Get notified instantly when new contracts match your keywords.</p>
+                                <button className="w-full py-2 bg-white text-indigo-700 font-bold rounded text-sm hover:bg-indigo-50 transition">Configure Alerts</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const SearchResults = ({ searchTerm, setView }) => {
+            return (
+                <div className="flex h-screen pt-4">
+                    {/* Facets Sidebar */}
+                    <div className="w-64 bg-white border-r border-slate-200 p-6 overflow-y-auto">
+                        <div className="mb-6">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Source</h3>
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-sm text-slate-700">
+                                    <input type="checkbox" checked className="rounded text-indigo-600" /> All Agencies
+                                </label>
+                                <label className="flex items-center gap-2 text-sm text-slate-700 ml-2">
+                                    <input type="checkbox" checked className="rounded text-indigo-600" /> DHC (PDFs)
+                                </label>
+                                <label className="flex items-center gap-2 text-sm text-slate-700 ml-2">
+                                    <input type="checkbox" checked className="rounded text-indigo-600" /> City Council (API)
+                                </label>
+                            </div>
+                        </div>
+                        <div className="mb-6">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Type</h3>
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-sm text-slate-700">
+                                    <input type="checkbox" checked className="rounded text-indigo-600" /> Resolutions
+                                </label>
+                                <label className="flex items-center gap-2 text-sm text-slate-700">
+                                    <input type="checkbox" className="rounded text-indigo-600" /> Contracts
+                                </label>
+                                <label className="flex items-center gap-2 text-sm text-slate-700">
+                                    <input type="checkbox" className="rounded text-indigo-600" /> Meeting Minutes
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Amount</h3>
+                            <div className="flex gap-2 items-center">
+                                <input type="text" placeholder="Min" className="w-20 border rounded px-2 py-1 text-sm" />
+                                <span className="text-slate-400">-</span>
+                                <input type="text" placeholder="Max" className="w-20 border rounded px-2 py-1 text-sm" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Results List */}
+                    <div className="flex-1 bg-slate-50 p-8 overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-slate-900">Results for "{searchTerm || 'Security'}"</h2>
+                            <span className="text-sm text-slate-500">14 results found (0.42s)</span>
+                        </div>
+
+                        <div className="space-y-4">
+                            {/* DHC Result (The Target) */}
+                            <div onClick={() => setView('detail')} className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 cursor-pointer transition group">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold">DHC</span>
+                                        <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-medium">Resolution</span>
+                                        <span className="text-xs text-slate-400">Dec 18, 2025</span>
+                                    </div>
+                                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold font-mono">$786,690.00</span>
+                                </div>
+                                <h3 className="text-lg font-bold text-indigo-700 group-hover:underline mb-2">Approval of Security Camera Surveillance System Implementation - Res. 3333</h3>
+                                <p className="text-slate-600 text-sm mb-3 line-clamp-2">
+                                    ...implementation of a new <span className="bg-yellow-100 font-bold">security camera</span> surveillance system across six DHC properties... Vendor: MDG Connected Solutions / T-Mobile...
+                                </p>
+                                <div className="flex gap-3 text-xs text-slate-400">
+                                    <span className="flex items-center gap-1"><i className="fa-solid fa-file-pdf"></i> Source: PDF (OCR)</span>
+                                    <span className="flex items-center gap-1"><i className="fa-solid fa-robot"></i> AI Summary Available</span>
+                                </div>
+                            </div>
+
+                            {/* Dummy Council Result */}
+                            <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm hover:shadow-md cursor-pointer transition opacity-75">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-bold">City Council</span>
+                                        <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-medium">Contract</span>
+                                        <span className="text-xs text-slate-400">Nov 12, 2025</span>
+                                    </div>
+                                    <span className="px-2 py-1 bg-slate-100 text-slate-500 rounded text-xs font-bold font-mono">$1.2M</span>
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-800 mb-2">Contract 6004991 - Public Safety Tech Renewal</h3>
+                                <p className="text-slate-600 text-sm mb-3">
+                                    ...renewal of maintenance services for <span className="bg-yellow-100 font-bold">security</span> infrastructure at municipal buildings...
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ArtifactDetail = ({ setView }) => {
+            const [activeTab, setActiveTab] = useState('summary');
+
+            return (
+                <div className="flex h-screen bg-slate-50">
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        {/* Detail Header */}
+                        <div className="bg-white border-b border-slate-200 px-8 py-6 shadow-sm z-10">
+                            <button onClick={() => setView('search')} className="text-sm text-slate-500 hover:text-indigo-600 mb-4 flex items-center gap-2">
+                                <i className="fa-solid fa-arrow-left"></i> Back to Search
+                            </button>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded border border-blue-200">DHC</span>
+                                        <span className="text-slate-400 text-sm">Dec 18, 2025</span>
+                                        <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                            <i className="fa-solid fa-check"></i> ADOPTED
+                                        </span>
+                                    </div>
+                                    <h1 className="text-2xl font-bold text-slate-900 leading-tight">{RES_3333.title}</h1>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm text-slate-500 uppercase font-bold">Resolution No.</p>
+                                    <p className="text-3xl font-mono font-bold text-slate-900">{RES_3333.number}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Three Pane View */}
+                        <div className="flex-1 overflow-hidden flex">
+                            
+                            {/* Left Pane: Analysis (The Value Add) */}
+                            <div className="w-80 bg-slate-50 border-r border-slate-200 p-6 overflow-y-auto">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase mb-4">Extracted Intelligence</h3>
+                                
+                                <div className="bg-white p-4 rounded border border-slate-200 shadow-sm mb-4">
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Total Value</p>
+                                    <p className="text-2xl font-mono font-bold text-emerald-600">${RES_3333.amount.toLocaleString()}</p>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-500 mb-2"><i className="fa-solid fa-building mr-2"></i>Vendor Detected</p>
+                                        <p className="text-sm font-medium text-indigo-700 bg-indigo-50 p-2 rounded border border-indigo-100">{RES_3333.vendor}</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-500 mb-2"><i className="fa-solid fa-map-pin mr-2"></i>Locations (6)</p>
+                                        <ul className="text-sm text-slate-600 space-y-1 pl-2 border-l-2 border-slate-200">
+                                            {RES_3333.locations.map(loc => <li key={loc}>{loc}</li>)}
+                                        </ul>
+                                    </div>
+
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-500 mb-2"><i className="fa-solid fa-tags mr-2"></i>Keywords</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            <span className="px-2 py-1 bg-slate-200 text-slate-600 rounded text-xs">Project Green Light</span>
+                                            <span className="px-2 py-1 bg-slate-200 text-slate-600 rounded text-xs">Surveillance</span>
+                                            <span className="px-2 py-1 bg-slate-200 text-slate-600 rounded text-xs">Cloud Storage</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Middle Pane: Source Text */}
+                            <div className="flex-1 bg-white p-8 overflow-y-auto">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="font-bold text-slate-800">Source Text (OCR)</h3>
+                                    <div className="flex bg-slate-100 rounded p-1">
+                                        <button className="px-3 py-1 bg-white shadow-sm rounded text-xs font-bold text-slate-800">Text View</button>
+                                        <button className="px-3 py-1 text-slate-500 text-xs font-medium hover:text-slate-800">Original PDF</button>
+                                    </div>
+                                </div>
+                                <div className="prose prose-sm max-w-none text-slate-700 font-serif leading-relaxed">
+                                    <p className="bg-yellow-50 p-4 border-l-4 border-yellow-400 italic mb-6">
+                                        <span className="font-bold not-italic text-yellow-800 block mb-1">Human Context (Documenter Note):</span>
+                                        {RES_3333.doc_notes}
+                                    </p>
+                                    <hr className="my-6"/>
+                                    <p className="whitespace-pre-wrap">{RES_3333.ocr_text}</p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- MAIN APP ---
+
+        const App = () => {
+            const [view, setView] = useState('dashboard'); // dashboard, search, detail
+            const [searchTerm, setSearchTerm] = useState('');
+
+            return (
+                <div className="flex h-screen font-sans">
+                    <Sidebar view={view} setView={setView} />
+                    <div className="flex-1 ml-64 overflow-hidden">
+                        {view === 'dashboard' && <Dashboard setView={setView} setSearchTerm={setSearchTerm} />}
+                        {view === 'search' && <SearchResults searchTerm={searchTerm} setView={setView} />}
+                        {view === 'detail' && <ArtifactDetail setView={setView} />}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

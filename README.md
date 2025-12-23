@@ -42,6 +42,7 @@ Because this is a concept simulation, it is scripted to demonstrate a specific h
 
 Beyond the visual prototype, this repository contains the strategic planning documents for the product:
 
+*   **[Policy](docs/policy-draft.md):** The governance for navigating ethical and operational concerns. 
 *   **[Product Strategy](docs/strategy.md):** The business case, revenue model, and alignment with Outlier's mission.
 *   **[Product Requirements (PRD)](docs/prd.md):** The detailed roadmap for how to build the "Real" version using our existing data assets.
 

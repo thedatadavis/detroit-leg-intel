@@ -8,17 +8,17 @@ Currently, critical data lives in silos—PDFs on the Housing Commission site, t
 
 ---
 
-## 🎮 The Live Prototype
+## The Live Prototype
 
 You can view the interactive prototype directly in your browser. It is a scripted simulation designed to visualize the user experience.
 
-### [👉 Click Here to Launch DLI Demo](https://thedatadavis.github.io/detroit-leg-intel/)
+### [Click Here to Launch DLI Demo](https://thedatadavis.github.io/detroit-leg-intel/)
 
 *No login or installation required.*
 
 ---
 
-## ⚡ Feature Walkthrough (What to Click)
+## Feature Walkthrough (What to Click)
 
 Because this is a concept simulation, it is scripted to demonstrate a specific high-value user flow. Follow these steps to experience the vision:
 
@@ -38,7 +38,7 @@ Because this is a concept simulation, it is scripted to demonstrate a specific h
 
 ---
 
-## 📄 Strategic Documentation
+## Strategic Documentation
 
 Beyond the visual prototype, this repository contains the strategic planning documents for the product:
 

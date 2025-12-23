@@ -2,6 +2,9 @@
 
 **Unlocking Detroit's "Dark Data" for Residents and Professionals.**
 
+<img width="1439" height="786" alt="image" src="https://github.com/user-attachments/assets/647d6e47-9208-4034-a9d4-63548ebfc3d4" />
+
+
 Detroit Legislative Intelligence (DLI) is a product concept designed to aggregate, index, and monitor the legislative history of Detroit’s 15+ governing agencies.
 
 Currently, critical data lives in silos—PDFs on the Housing Commission site, transcripts in Otter.ai, and notes on Documenters.org. DLI unifies this into a single "Google-like" search engine, transforming a cost center into a potential recurring revenue engine.
